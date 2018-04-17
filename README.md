@@ -1,25 +1,24 @@
-# ZOEdisplay
-An onboard realtime status display for Renault ZOE vehicles
+# SmartED-Display, based on ZOEdisplay from premultiply
+
+An onboard realtime status display for SmartED vehicles
 
 Die von mir verwendete Hardware:
 
-* Arduino Uno https://www.reichelt.de/?ARTICLE=119045
-* CAN-BUS Shield V1.2 https://www.seeedstudio.com/CAN-BUS-Shield-V1.2-p-2256.html
+* Arduino 2009
+* CAN-BUS Shield candiy von Watterott http://www.watterott.com/de/Arduino-CANdiy-Shield
 * Arduino LCD KeyPad Shield (SKU: DFR0009) https://www.dfrobot.com/wiki/index.php/Arduino_LCD_KeyPad_Shield_(SKU:_DFR0009)
 
+Zum Betrieb ist es notwendig, dass der Pin 10 des Displays richtung Can-Shield/Arduino einfach abgezwickt oder umgebogen wird, so dass er nicht runter kontaktiert.
 
-CAN-Bus-Shield Konfiguration: CS->D10 (vorgesehene Lötbrücke)
-Achtung: Die winzige Standard-Leiterbahnverbindung zwischend den Lötpads für CS->D9 muss dazu natürlich entfernt werden! Nachmessen!
+Die Brücke, wie sie beim ZOEdisplay beschrieben ist, ist nicht zwingend notwendig.
 
-Modifikation des LCD-Shields notwendig (Leiterbahn unterbrechen und bei Bedarf umlegen): Leiterbahn von im Lieferzustand Pin 10 des LCD-Shields auf Pin 3 (D3) des Arduino-Board umlegen (für PWM-Helligkeitsregelung nach Lichtsituation der LCD-Hintergrundbeleuchtung).
+Der Code ist soweit lauffähig, getestet und zeigt alles korrekt an.
 
-Option: Temperatursensor via OneWire-Bus an Pin A1 (DATA) sowie +5V und GND. Separater 4.7kΩ-Pullup-Widerstand zwischen +5V und DATA erforderlich.
+Der Code soll noch weiter abgespeckt werden, so dass ein Minimalcode entsteht von dem aus dann weitere Displays und Telemetriemöglichkeiten eingebunden werden.
 
-
-
-Einige (inzwischen veraltete) Fotos im Betrieb:
-
-![](https://cdn.goingelectric.de/forum/resources/image/thumb/44462)
+geplante Displaytypen (Nextion Touch TFT, Oled, ...)
+geplante Telemetrie (SIM800 GSM, WIFI, ...) -> MQTT
+geplante Prozessoren (ESP32 für WIFI)
 
 
 Pin-Verwendung:  
