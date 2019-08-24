@@ -8,7 +8,7 @@ Die von mir verwendete Hardware:
 * CAN-BUS Shield https://www.seeedstudio.com/CAN-BUS-Shield-V1-2-p-2256.html
 * Arduino LCD KeyPad Shield (SKU: DFR0009) https://www.dfrobot.com/wiki/index.php/Arduino_LCD_KeyPad_Shield_(SKU:_DFR0009)
 * Gehäuse (grün, modifiziert CAN Steckerausschnitt, USB Steckerausschnitt vergrößert): https://www.ebay.de/itm/Großes-Plexiglas-Gehäuse-für-Arduino-Uno-und-Duemilanove-mit-Shield/113382565122?ssPageName=STRK%3AMEBIDX%3AIT&var=413633995787&_trksid=p2057872.m2749.l2649
-* irgendwein Protoshield (um das LCD shield anzuheben)
+* irgendein Protoshield (um das LCD shield anzuheben)
 
 Zum Betrieb ist es notwendig, dass der Pin 10 des Displays richtung Can-Shield/Arduino einfach abgezwickt oder umgebogen wird, so dass er nicht runter kontaktiert.
 
