@@ -3,7 +3,7 @@
   based on https://github.com/premultiply/ZOEdisplay/
 *********************************************************************************************************/
 
-#include <StopWatch.h>
+#include <SPI.h>
 #include <TimerOne.h>
 #include <EEPROM.h>
 #include <PrintEx.h>
@@ -12,15 +12,13 @@
 #include <mcp_can.h>
 #include <AnalogButtons.h>
 
-//#include <OneWire.h>
-//#include <DallasTemperature.h>
-
-
 #define CAN_INT 2
-#define SPI_CS_PIN 10
-#define ANALOG_BUTTON_PIN A0
-//#define ONE_WIRE_BUS A1
+//#define SERIAL_DEBUG //my debug
+//#define DEBUG_EN 1   //mcp_can.h debug
 
+#define SPI_CS_PIN 10
+
+#define ANALOG_BUTTON_PIN A0
 
 enum screens : byte {
   SCRN_ODO,     // ODO Anzeige
@@ -45,6 +43,7 @@ enum screens : byte {
   SCRN_508,
   SCRN_512,
   SCRN_518,
+  SCRN_xy,      // Any
   SCRN_END      // Ende
 };
 
@@ -70,29 +69,24 @@ const screens PAGE_LAST = SCRN_END;
 const char timerModeChar[] = "CMPD";
 
 //define custom LCD CGRAM char locations
-const byte CHR_Power33       = 0x00;
+const byte CHR_Power33  = 0x00;
 //note: chars 0x01-0x04 are occupied by LcdBarGraph lib
-const byte CHR_Power66          = 0x05;
-const byte CHR_KW          = 0x06;
-const byte CHR_Power99 = 0x07;
+const byte CHR_Power66  = 0x05;
+const byte CHR_KW       = 0x06;
+const byte CHR_Power99  = 0x07;
 
-
-StopWatch sw(StopWatch::SECONDS);
 LiquidCrystal lcd(8, 9, 4, 5, 6, 7);
 LcdBarGraph lbg(&lcd, 16, 0, 1);
 PrintEx lcdEx = lcd;
 MCP_CAN CAN(SPI_CS_PIN);
 
+// values changed, because the resistors differ from the original 
 Button btnRIGHT = Button(0, &btnRIGHTClick);
-Button btnUP = Button(99, &btnUPClick, &btnUPHold, 500, 125);
-Button btnDOWN = Button(255, &btnDOWNClick, &btnDOWNHold, 500, 125);
-Button btnLEFT = Button(407, &btnLEFTClick);
-Button btnSELECT = Button(637, &btnSELECTClick, &btnSELECTHold, 2000, UINT16_MAX);
+Button btnUP = Button(130, &btnUPClick, &btnUPHold, 500, 125);
+Button btnDOWN = Button(306, &btnDOWNClick, &btnDOWNHold, 500, 125);
+Button btnLEFT = Button(479, &btnLEFTClick);
+Button btnSELECT = Button(721, &btnSELECTClick, &btnSELECTHold, 2000, UINT16_MAX);
 AnalogButtons analogButtons = AnalogButtons(ANALOG_BUTTON_PIN, INPUT);
-//OneWire oneWire(ONE_WIRE_BUS);
-//DallasTemperature sensors(&oneWire);
-//DeviceAddress tempDeviceAddress;
-
 
 //custom LCD CGRAM bitmaps
 byte char_tilde[8] = { // ~
@@ -136,7 +130,7 @@ byte char_gradC[8] = { // °C
   0b00000
 };
 
-byte char_Power33[8] = { 
+byte char_Power33[8] = { // |
   0b00000,
   0b00000,
   0b00000,
@@ -146,7 +140,7 @@ byte char_Power33[8] = {
   0b10000,
   0b00000
 };
-byte char_Power66[8] = { 
+byte char_Power66[8] = { // ||
   0b00000,
   0b00000,
   0b00000,
@@ -156,7 +150,7 @@ byte char_Power66[8] = {
   0b10100,
   0b00000
 };
-byte char_Power99[8] = { 
+byte char_Power99[8] = { // |||
   0b00000,
   0b00001,
   0b00001,
@@ -187,7 +181,7 @@ uint64_t pid_0x504 = PID_INIT_VALUE;
 uint64_t pid_0x508 = PID_INIT_VALUE;
 uint64_t pid_0x512 = PID_INIT_VALUE;
 uint64_t pid_0x518 = PID_INIT_VALUE;
-
+uint64_t pid_xy = PID_INIT_VALUE;
 
 //user PID decoder buffer
 uint64_t pid_0xPID = PID_INIT_VALUE;
@@ -219,11 +213,12 @@ float ChargeEndKwh = 0.0;
 float priceKwh = 0.0;
 float temperature = 0.0;
 
-
 void setup()
 {
+#ifdef SERIAL_DEBUG
   Serial.begin(115200);
   Serial.println("CAN-Display for SMART-ED");
+#endif
   //Initialize display
   lcd.begin(16, 2);
   lcd.clear();
@@ -237,30 +232,44 @@ void setup()
   lcd.home();
 
   //Initialize CAN shield
-  pinMode(SPI_CS_PIN, OUTPUT);
-  //CAN.begin(MCP_STDEXT, CAN_500KBPS, MCP_16MHZ);
-  CAN.begin(MCP_ANY, CAN_500KBPS, MCP_16MHZ);
-  
-  /*
+  while (CAN_OK != CAN.begin(CAN_500KBPS))              // init can bus : baudrate = 500k
+    {
+     #ifdef SERIAL_DEBUG
+        Serial.println("CAN init failed, retry");
+     #endif
+        lcd.clear();
+        lcd.home();
+        lcd.setCursor(0, 0); lcd.print(F("CAN init failed,"));
+        lcd.setCursor(6, 1); lcd.print(F("retry"));
+        delay(250);
+    }
+  #ifdef SERIAL_DEBUG
+    Serial.println("CAN init ok");
+  #endif
   //Setup CAN PID filters
   //there are 2 mask in mcp2515, you need to set both of them
   //mask0
-  CAN.init_Mask(0, 0, 0x0c000000);
+  CAN.init_Mask(0, 0, 0x7FF); //all std_IDs
   //filter0
-  CAN.init_Filt(0, 0, 0x04ff0000); // 0x400 - 0x7ff
-  CAN.init_Filt(1, 0, 0x04ff0000);  
-  
+  CAN.init_Filt(0, 0, 0x412); //init for page_no 0
+  CAN.init_Filt(1, 0, 0x7FF);
+
   //mask1
-  CAN.init_Mask(1, 0, 0x07ff0000);
+  CAN.init_Mask(1, 0, 0x7FF); //all std_IDs
   //filter1
-  CAN.init_Filt(2, 0, 0x03910000);
-  CAN.init_Filt(3, 0, 0x02120000); // currently not requiered
-  CAN.init_Filt(4, 0, 0x01fd0000); // t = 100 ms
-  CAN.init_Filt(5, 0, 0x01f60000); // t = 10 ms
-  */
+  CAN.init_Filt(2, 0, 0x318); //init for page_no 0
+  CAN.init_Filt(3, 0, 0x7FF);
+  CAN.init_Filt(4, 0, 0x7FF);
+  CAN.init_Filt(5, 0, 0x7FF);
   
-  CAN.setMode(MCP_NORMAL); // Change to normal mode to allow messages to be transmitted
-  pinMode(CAN_INT, INPUT);
+  lcd.clear();
+  lcd.home();
+  lcd.setCursor(3, 0); lcd.print(F("CAN init ok"));
+  lcd.setCursor(2, 1); lcd.print(F("Wait for data"));
+  delay(500);
+ 
+  
+  //pinMode(CAN_INT, INPUT); // Inputmode is default
 
   //Button assignments
   analogButtons.add(btnRIGHT);
@@ -292,7 +301,7 @@ void setup()
   EEPROM.get(0x60, ChargeEndKwh);
   EEPROM.get(0x70, selectedPID);
   EEPROM.get(0x80, timerMode);
-  
+
   if (isnan(priceKwh) || isnan(energy) || isnan(ChargeBeginKwh) || isnan(ChargeEndKwh)) {
     priceKwh = 0.0;
     energy = 0;
@@ -300,28 +309,15 @@ void setup()
     ChargeEndKwh = 0.0;
   }
 
-  //Initialize internal temperature sensor
-  //sensors.begin();
-  //sensors.getAddress(tempDeviceAddress, 0);
-  //sensors.setResolution(tempDeviceAddress, 9);
-  //sensors.setWaitForConversion(false);
-  //sensors.requestTemperatures();
-  ////lastTempRequest = millis();
-
   //Initialize display refresh timer (Timer1)
   Timer1.initialize(250000);
   Timer1.attachInterrupt(LCD_ISR);
-
-  //Initialize stopwatch
-  sw.reset();
 }
-
 
 void LCD_ISR()
 {
   intCount++;
 }
-
 
 void btnRIGHTClick()
 {
@@ -331,30 +327,25 @@ void btnRIGHTClick()
   screenRefresh = true;
 }
 
-
 void btnUPClick()
 {
   screenRefresh = true;
 }
-
 
 void btnUPHold()
 {
   screenRefresh = true;
 }
 
-
 void btnDOWNClick()
 {
   screenRefresh = true;
 }
 
-
 void btnDOWNHold()
 {
   screenRefresh = true;
 }
-
 
 void btnLEFTClick()
 {
@@ -364,19 +355,16 @@ void btnLEFTClick()
   screenRefresh = true;
 }
 
-
 void btnSELECTClick()
 {
   screenRefresh = true;
 }
-
 
 void btnSELECTHold()
 {
   saveState();
   EEPROM.update(0x00, pageno);
 }
-
 
 void saveState()
 {
@@ -391,14 +379,14 @@ void saveState()
   EEPROM.put(0x60, ChargeEndKwh);
   EEPROM.put(0x70, selectedPID);
   EEPROM.put(0x80, timerMode);
-  //lcd.clear();
+  delay(1000);
+  lcd.clear();
 }
-
 
 void loop()
 {
   union64 buf;
-  
+
   static bool lastCharging = false;
   static bool lastMains = false;
   static bool lastPlugged = true;
@@ -423,6 +411,8 @@ void loop()
   static unsigned long lastPidSeen = 0;
   static unsigned long lastPidCycleDuration = 0;
 
+  long unsigned int rxId;
+    
   //perf counter
   countCycle++;
   minCycle = min(minCycle, lastCycle);
@@ -430,40 +420,41 @@ void loop()
   startCycle = millis();
 
   //CAN receiver
-  if(!digitalRead(CAN_INT)) { //while (CAN_MSGAVAIL == CAN.checkReceive())
-    long unsigned int rxId;
-    byte len = 0; 
-
-    buf.ui64 = PID_INIT_VALUE;
-    CAN.readMsgBuf(&rxId, &len, buf.b);
-    //user pid decoder
-    if (rxId == selectedPID) {
-      lastPidCycleDuration = millis() - lastPidSeen;
-      lastPidSeen = millis();
-      if (!freezePID) pid_0xPID = swap_uint64(buf.ui64);
-    }
-    switch (rxId) {
-    case 0x200: pid_0x200 = swap_uint64(buf.ui64); break;
-    case 0x236: pid_0x236 = swap_uint64(buf.ui64); break;
-    case 0x2D5: pid_0x2D5 = swap_uint64(buf.ui64); break;
-    case 0x318: pid_0x318 = swap_uint64(buf.ui64); break;
-    case 0x3CE: pid_0x3CE = swap_uint64(buf.ui64); break;
-    case 0x3D5: pid_0x3D5 = swap_uint64(buf.ui64); break;
-    case 0x3D7: pid_0x3D7 = swap_uint64(buf.ui64); break;
-    case 0x3F2: pid_0x3F2 = swap_uint64(buf.ui64); break;
-    case 0x408: pid_0x408 = swap_uint64(buf.ui64); break;
-    case 0x412: pid_0x412 = swap_uint64(buf.ui64); break;
-    case 0x418: pid_0x418 = swap_uint64(buf.ui64); break;
-    case 0x423: pid_0x423 = swap_uint64(buf.ui64); break;
-    case 0x443: pid_0x443 = swap_uint64(buf.ui64); break;
-    case 0x448: pid_0x448 = swap_uint64(buf.ui64); break;
-    case 0x504: pid_0x504 = swap_uint64(buf.ui64); break;
-    case 0x508: pid_0x508 = swap_uint64(buf.ui64); break;
-    case 0x512: pid_0x512 = swap_uint64(buf.ui64); break;
-    case 0x518: pid_0x518 = swap_uint64(buf.ui64); break;
+  if(!digitalRead(CAN_INT)) { 
+    if(CAN_MSGAVAIL == CAN.checkReceive()) {
+      byte len = 0;
+      buf.ui64 = PID_INIT_VALUE;
+      CAN.readMsgBuf(&len, buf.b);
+      rxId = CAN.getCanId();
+      //user pid decoder
+      if (rxId == selectedPID) {
+        lastPidCycleDuration = millis() - lastPidSeen;
+        lastPidSeen = millis();
+        if (!freezePID) pid_0xPID = swap_uint64(buf.ui64);
+      }
+      switch (rxId) {
+      case 0x200: pid_0x200 = swap_uint64(buf.ui64); break;
+      case 0x236: pid_0x236 = swap_uint64(buf.ui64); break;
+      case 0x2D5: pid_0x2D5 = swap_uint64(buf.ui64); break;
+      case 0x318: pid_0x318 = swap_uint64(buf.ui64); break;
+      case 0x3CE: pid_0x3CE = swap_uint64(buf.ui64); break;
+      case 0x3D5: pid_0x3D5 = swap_uint64(buf.ui64); break;
+      case 0x3D7: pid_0x3D7 = swap_uint64(buf.ui64); break;
+      case 0x3F2: pid_0x3F2 = swap_uint64(buf.ui64); break;
+      case 0x408: pid_0x408 = swap_uint64(buf.ui64); break;
+      case 0x412: pid_0x412 = swap_uint64(buf.ui64); break;
+      case 0x418: pid_0x418 = swap_uint64(buf.ui64); break;
+      case 0x423: pid_0x423 = swap_uint64(buf.ui64); break;
+      case 0x443: pid_0x443 = swap_uint64(buf.ui64); break;
+      case 0x448: pid_0x448 = swap_uint64(buf.ui64); break;
+      case 0x504: pid_0x504 = swap_uint64(buf.ui64); break;
+      case 0x508: pid_0x508 = swap_uint64(buf.ui64); break;
+      case 0x512: pid_0x512 = swap_uint64(buf.ui64); break;
+      case 0x518: pid_0x518 = swap_uint64(buf.ui64); break;
+      default: pid_xy = swap_uint64(buf.ui64);  break;
+      }
     }
   }
-
   //read buttons
   analogButtons.check();
 
@@ -471,12 +462,13 @@ void loop()
   //display screens
     screenRefresh = false;
     lcd.home();
-
     switch (pageno) {
 
       case SCRN_ODO: // ODO Aneige Reichweite
+        CAN.init_Filt(0, 0, 0x412);
+        CAN.init_Filt(1, 0, 0x318);
         lcd.setCursor(2, 0); lcd.print(F("Km:")); lcdEx.printf("%7ukm", (pid_0x412 >> 24 ) & 0xFFFFFFu ); // Kmstand
-        lcd.setCursor(0, 1); lcd.print(F("Rw:")); lcdEx.printf("%3ikm", (pid_0x318 >> 0 ) & 0xFFu ); // Reichweite
+        lcd.setCursor(0, 1); lcd.print(F("Rw:")); lcdEx.printf("%3ikm  ", (pid_0x318 >> 0 ) & 0xFFu ); // Reichweite
         //lcd.setCursor(9, 1); lcd.print(F("Pwr")); lcdEx.printf("%3i%%", (pid_0x318 >> 16 ) & 0xFFu ); // Power
         lcd.setCursor(10, 1); lcd.print(F("Pwr: "));
         if ( ((pid_0x318 >> 16 ) & 0xFFu ) == 33 ) {lcd.write(CHR_Power33);} // Power
@@ -485,8 +477,10 @@ void loop()
       break;
 
       case SCRN_CRG: // Lade Anzeige
+        CAN.init_Filt(0, 0, 0x448);
+        CAN.init_Filt(1, 0, 0x508);
         if ( ((pid_0x448 >> 56) & 0xFFu) == 0x0F )
-        { 
+        {
         lcd.setCursor(0, 0); lcd.print(F("Power   ")); lcdEx.printf("%7.1f", ( (((pid_0x448 >> 0) & 0xFFFFu) / 10.0 ) * ((((pid_0x508 >> 32) & 0x3FFFu) / 10 ) - 819.2 ) ) * 0.001 ); lcd.write(CHR_KW); // Leistung
         lcd.setCursor(1, 1); lcdEx.printf("%5.1fV", ((pid_0x448 >> 0) & 0xFFFFu) / 10.0 ); // hvV
         lcd.setCursor(8, 1); lcdEx.printf("%6.1fA", (((pid_0x508 >> 32) & 0x3FFFu) / 10 ) - 819.2 ); // hvA
@@ -500,11 +494,15 @@ void loop()
       break;
 
       case SCRN_SOC: // SOC Anzeige
+        CAN.init_Filt(0, 0, 0x518);
+        CAN.init_Filt(1, 0, 0x2D5);
         lcd.setCursor(2, 0); lcd.print(F(" SOC ")); lcdEx.printf("%5.1f%%", ((pid_0x518 ) & 0xFFu)  /  2.0 ); // SOC
         lcd.setCursor(2, 1); lcd.print(F("rSOC ")); lcdEx.printf("%5.1f%%", ((pid_0x2D5 >> 16) & 0xFFFu) / 10.0 ); // rSOC
       break;
 
       case SCRN_ECO: // ECO Aneige
+        CAN.init_Filt(0, 0, 0x3F2);
+        CAN.init_Filt(1, 0, 0x3F2);
         lcd.setCursor(0, 0); lcd.print(F("ECO")); lcdEx.printf("%3i%%", ((pid_0x3F2 >> 32 ) & 0xFFu ) / 2); // ECO
         lcd.setCursor(9, 0); lcd.print(F("bre")); lcdEx.printf("%3i%%", ((pid_0x3F2 >> 40 ) & 0xFFu ) / 2); // ECO
         lcd.setCursor(0, 1); lcd.print(F("drv")); lcdEx.printf("%3i%%", ((pid_0x3F2 >> 48 ) & 0xFFu ) / 2); // ECO
@@ -512,6 +510,8 @@ void loop()
       break;
 
       case SCRN_200: // PID 0x200
+        CAN.init_Filt(0, 0, 0x200);
+        CAN.init_Filt(1, 0, 0x200);
         lcd.print(F("PID 0x200"));
         lcd.setCursor(0, 1);
         lcdEx.printf("%02x", (pid_0x200 >>  7*8) & 0xFFu);
@@ -525,6 +525,8 @@ void loop()
         break;
 
       case SCRN_236: // PID 0x236
+        CAN.init_Filt(0, 0, 0x236);
+        CAN.init_Filt(1, 0, 0x236);
         lcd.print(F("PID 0x236"));
         lcd.setCursor(0, 1);
         lcdEx.printf("%02x", (pid_0x236 >>  7*8) & 0xFFu);
@@ -538,6 +540,8 @@ void loop()
         break;
 
       case SCRN_2D5: // PID 0x2D5
+        CAN.init_Filt(0, 0, 0x2D5);
+        CAN.init_Filt(1, 0, 0x2D5);
         lcd.print(F("PID 0x2D5"));
         lcd.setCursor(0, 1);
         lcdEx.printf("%02x", (pid_0x2D5 >>  7*8) & 0xFFu);
@@ -551,6 +555,8 @@ void loop()
         break;
 
       case SCRN_318: // PID 0x318
+        CAN.init_Filt(0, 0, 0x318);
+        CAN.init_Filt(1, 0, 0x318);
         lcd.print(F("PID 0x318"));
         lcd.setCursor(0, 1);
         lcdEx.printf("%02x", (pid_0x318 >>  7*8) & 0xFFu);
@@ -564,6 +570,8 @@ void loop()
         break;
 
       case SCRN_3CE: // PID 0x3CE
+        CAN.init_Filt(0, 0, 0x3CE);
+        CAN.init_Filt(1, 0, 0x3CE);
         lcd.print(F("PID 0x3CE"));
         lcd.setCursor(0, 1);
         lcdEx.printf("%02x", (pid_0x3CE >>  7*8) & 0xFFu);
@@ -577,6 +585,8 @@ void loop()
         break;
 
       case SCRN_3D5: // PID 0x3D5
+        CAN.init_Filt(0, 0, 0x3D5);
+        CAN.init_Filt(1, 0, 0x3D5);
         lcd.print(F("PID 0x3D5"));
         lcd.setCursor(0, 1);
         lcdEx.printf("%02x", (pid_0x3D5 >>  7*8) & 0xFFu);
@@ -590,6 +600,8 @@ void loop()
         break;
 
       case SCRN_3D7: // PID 0x3D7
+        CAN.init_Filt(0, 0, 0x3D7);
+        CAN.init_Filt(1, 0, 0x3D7);
         lcd.print(F("PID 0x3D7"));
         lcd.setCursor(0, 1);
         lcdEx.printf("%02x", (pid_0x3D7 >>  7*8) & 0xFFu);
@@ -603,6 +615,8 @@ void loop()
         break;
 
       case SCRN_3F2: // PID 0x3F2
+        CAN.init_Filt(0, 0, 0x3F2);
+        CAN.init_Filt(1, 0, 0x3F2);
         lcd.print(F("PID 0x3F2"));
         lcd.setCursor(0, 1);
         lcdEx.printf("%02x", (pid_0x3F2 >>  7*8) & 0xFFu);
@@ -616,6 +630,8 @@ void loop()
         break;
 
       case SCRN_408: // PID 0x408
+        CAN.init_Filt(0, 0, 0x408);
+        CAN.init_Filt(1, 0, 0x408);
         lcd.print(F("PID 0x408"));
         lcd.setCursor(0, 1);
         lcdEx.printf("%02x", (pid_0x408 >>  7*8) & 0xFFu);
@@ -629,6 +645,8 @@ void loop()
         break;
 
       case SCRN_412: // PID 0x412
+        CAN.init_Filt(0, 0, 0x412);
+        CAN.init_Filt(1, 0, 0x412);
         lcd.print(F("PID 0x412"));
         lcd.setCursor(0, 1);
         lcdEx.printf("%02x", (pid_0x412 >>  7*8) & 0xFFu);
@@ -655,6 +673,8 @@ void loop()
         break;
 
       case SCRN_423: // PID 0x423
+        CAN.init_Filt(0, 0, 0x423);
+        CAN.init_Filt(1, 0, 0x423);
         lcd.print(F("PID 0x423"));
         lcd.setCursor(0, 1);
         lcdEx.printf("%02x", (pid_0x423 >>  7*8) & 0xFFu);
@@ -668,6 +688,8 @@ void loop()
         break;
 
       case SCRN_443: // PID 0x443
+        CAN.init_Filt(0, 0, 0x443);
+        CAN.init_Filt(1, 0, 0x443);
         lcd.print(F("PID 0x443"));
         lcd.setCursor(0, 1);
         lcdEx.printf("%02x", (pid_0x443 >>  7*8) & 0xFFu);
@@ -694,6 +716,8 @@ void loop()
         break;
 
       case SCRN_504: // PID 0x504
+        CAN.init_Filt(0, 0, 0x504);
+        CAN.init_Filt(1, 0, 0x504);
         lcd.print(F("PID 0x504"));
         lcd.setCursor(0, 1);
         lcdEx.printf("%02x", (pid_0x504 >>  7*8) & 0xFFu);
@@ -707,6 +731,8 @@ void loop()
         break;
 
       case SCRN_508: // PID 0x508
+        CAN.init_Filt(0, 0, 0x508);
+        CAN.init_Filt(1, 0, 0x508);
         lcd.print(F("PID 0x508"));
         lcd.setCursor(0, 1);
         lcdEx.printf("%02x", (pid_0x508 >>  7*8) & 0xFFu);
@@ -720,6 +746,8 @@ void loop()
         break;
 
       case SCRN_512: // PID 0x512
+        CAN.init_Filt(0, 0, 0x512);
+        CAN.init_Filt(1, 0, 0x512);
         lcd.print(F("PID 0x512"));
         lcd.setCursor(0, 1);
         lcdEx.printf("%02x", (pid_0x512 >>  7*8) & 0xFFu);
@@ -733,6 +761,8 @@ void loop()
         break;
 
       case SCRN_518: // PID 0x518
+        CAN.init_Filt(0, 0, 0x518);
+        CAN.init_Filt(1, 0, 0x518);
         lcd.print(F("PID 0x518"));
         lcd.setCursor(0, 1);
         lcdEx.printf("%02x", (pid_0x518 >>  7*8) & 0xFFu);
@@ -744,21 +774,38 @@ void loop()
         lcdEx.printf("%02x", (pid_0x518 >>  1*8) & 0xFFu);
         lcdEx.printf("%02x", (pid_0x518 >>  0*8) & 0xFFu);
         break;
-
+      
+      case SCRN_xy: // any_PID
+        CAN.init_Filt(0, 0, 0x00);
+        CAN.init_Filt(1, 0, 0x00);
+        lcd.print(F("PID xy"));
+        lcd.setCursor(8, 0); lcdEx.printf("%04x", rxId & 0xFFFFu );
+        lcd.setCursor(0, 1);
+        lcdEx.printf("%02x", (pid_xy >>  7*8) & 0xFFu);
+        lcdEx.printf("%02x", (pid_xy >>  6*8) & 0xFFu);
+        lcdEx.printf("%02x", (pid_xy >>  5*8) & 0xFFu);
+        lcdEx.printf("%02x", (pid_xy >>  4*8) & 0xFFu);
+        lcdEx.printf("%02x", (pid_xy >>  3*8) & 0xFFu);
+        lcdEx.printf("%02x", (pid_xy >>  2*8) & 0xFFu);
+        lcdEx.printf("%02x", (pid_xy >>  1*8) & 0xFFu);
+        lcdEx.printf("%02x", (pid_xy >>  0*8) & 0xFFu);
+        break;
 
       case SCRN_END: // ENDE
+        CAN.init_Filt(0, 0, 0x7FF);
+        CAN.init_Filt(1, 0, 0x7FF);
         lcd.setCursor(3, 0);
         lcd.print(F("eok gnah's"));
         lcd.setCursor(0, 1);
         lcd.print(F("Smart-ED Display"));
-      break;
-              
+        break;
     }
     //perfmon cycle reset
     minCycle = UINT32_MAX;
     maxCycle = 0;
     countCycle = 0;
   }
+  
   lastCycle = millis() - startCycle;
 }
 
@@ -770,7 +817,7 @@ uint64_t swap_uint64(uint64_t val)
   return (val << 32) | (val >> 32);
 }
 
+
 /*********************************************************************************************************
   END FILE
 *********************************************************************************************************/
-
