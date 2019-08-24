@@ -16,10 +16,9 @@ Der Code ist soweit lauffähig, getestet und zeigt alles korrekt an.
 
 Der Code soll noch weiter abgespeckt werden, so dass ein Minimalcode entsteht von dem aus dann weitere Displays und Telemetriemöglichkeiten eingebunden werden.
 
-geplante Displaytypen (Nextion Touch TFT, Oled, ...)
-geplante Telemetrie (SIM800 GSM, WIFI, ...) -> MQTT
-geplante Prozessoren (ESP32 für WIFI)
+Aktivieren von Filtern und Masken um schnell die nötigen Daten zuerhalten.
 
+geplante Displaytypen ( Oled SSD1309 2,42", ...)
 
 Pin-Verwendung:  
 A0    Display Shield   Buttons (select, up, right, down and left)  
