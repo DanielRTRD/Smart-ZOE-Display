@@ -21,10 +21,10 @@
 #define ANALOG_BUTTON_PIN A0
 
 enum screens : byte {
-  SCRN_ODO,     // ODO Anzeige
-  SCRN_SOC,     // SOC Anzeige
-  SCRN_CRG,     // Lade Anzeige
-  SCRN_ECO,     // ECO Anzeige
+  SCRN_ODO,     // ODO Display
+  SCRN_SOC,     // SOC Display
+  SCRN_CRG,     // Lade Display
+  SCRN_ECO,     // ECO Display
   SCRN_200,
   SCRN_236,
   SCRN_2D5,
@@ -162,7 +162,7 @@ byte char_Power99[8] = { // |||
 };
 
 
-//internal pid buffers von Smart
+//internal pid buffers from smart
 uint64_t pid_0x200 = PID_INIT_VALUE;
 uint64_t pid_0x236 = PID_INIT_VALUE;
 uint64_t pid_0x2D5 = PID_INIT_VALUE;
@@ -464,11 +464,11 @@ void loop()
     lcd.home();
     switch (pageno) {
 
-      case SCRN_ODO: // ODO Aneige Reichweite
+      case SCRN_ODO: // ODO display range
         CAN.init_Filt(0, 0, 0x412);
         CAN.init_Filt(1, 0, 0x318);
         lcd.setCursor(2, 0); lcd.print(F("Km:")); lcdEx.printf("%7ukm", (pid_0x412 >> 24 ) & 0xFFFFFFu ); // Kmstand
-        lcd.setCursor(0, 1); lcd.print(F("Rw:")); lcdEx.printf("%3ikm  ", (pid_0x318 >> 0 ) & 0xFFu ); // Reichweite
+        lcd.setCursor(0, 1); lcd.print(F("Rw:")); lcdEx.printf("%3ikm  ", (pid_0x318 >> 0 ) & 0xFFu ); // Range
         //lcd.setCursor(9, 1); lcd.print(F("Pwr")); lcdEx.printf("%3i%%", (pid_0x318 >> 16 ) & 0xFFu ); // Power
         lcd.setCursor(10, 1); lcd.print(F("Pwr: "));
         if ( ((pid_0x318 >> 16 ) & 0xFFu ) == 33 ) {lcd.write(CHR_Power33);} // Power
@@ -476,7 +476,7 @@ void loop()
         if ( ((pid_0x318 >> 16 ) & 0xFFu ) == 99 ) {lcd.write(CHR_Power99);} // Power
       break;
 
-      case SCRN_CRG: // Lade Anzeige
+      case SCRN_CRG: // Charging display
         CAN.init_Filt(0, 0, 0x448);
         CAN.init_Filt(1, 0, 0x508);
         if ( ((pid_0x448 >> 56) & 0xFFu) == 0x0F )
@@ -493,14 +493,14 @@ void loop()
         }
       break;
 
-      case SCRN_SOC: // SOC Anzeige
+      case SCRN_SOC: // SOC display
         CAN.init_Filt(0, 0, 0x518);
         CAN.init_Filt(1, 0, 0x2D5);
         lcd.setCursor(2, 0); lcd.print(F(" SOC ")); lcdEx.printf("%5.1f%%", ((pid_0x518 ) & 0xFFu)  /  2.0 ); // SOC
         lcd.setCursor(2, 1); lcd.print(F("rSOC ")); lcdEx.printf("%5.1f%%", ((pid_0x2D5 >> 16) & 0xFFFu) / 10.0 ); // rSOC
       break;
 
-      case SCRN_ECO: // ECO Aneige
+      case SCRN_ECO: // ECO display
         CAN.init_Filt(0, 0, 0x3F2);
         CAN.init_Filt(1, 0, 0x3F2);
         lcd.setCursor(0, 0); lcd.print(F("ECO")); lcdEx.printf("%3i%%", ((pid_0x3F2 >> 32 ) & 0xFFu ) / 2); // ECO
