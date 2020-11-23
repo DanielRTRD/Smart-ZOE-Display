@@ -217,7 +217,7 @@ void setup()
 {
 #ifdef SERIAL_DEBUG
   Serial.begin(115200);
-  Serial.println("CAN-Display for SMART-ED");
+  Serial.println("SmartED-Display");
 #endif
   //Initialize display
   lcd.begin(16, 2);
@@ -795,9 +795,9 @@ void loop()
         CAN.init_Filt(0, 0, 0x7FF);
         CAN.init_Filt(1, 0, 0x7FF);
         lcd.setCursor(3, 0);
-        lcd.print(F("eok gnah's"));
+        lcd.print(F("premultiply & eokgnah &"));
         lcd.setCursor(0, 1);
-        lcd.print(F("Smart-ED Display"));
+        lcd.print(F("kirk-loeten & DanielRTRD"));
         break;
     }
     //perfmon cycle reset
