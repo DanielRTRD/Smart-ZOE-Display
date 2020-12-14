@@ -13,8 +13,8 @@
 #include <AnalogButtons.h>
 
 #define CAN_INT 2
-//#define SERIAL_DEBUG //my debug
-//#define DEBUG_EN 1   //mcp_can.h debug
+#define SERIAL_DEBUG //my debug
+#define DEBUG_EN 1   //mcp_can.h debug
 
 #define SPI_CS_PIN 10
 
@@ -215,36 +215,40 @@ float temperature = 0.0;
 
 void setup()
 {
-#ifdef SERIAL_DEBUG
-  Serial.begin(115200);
-  Serial.println("SmartED-Display");
-#endif
+  #ifdef SERIAL_DEBUG
+    Serial.begin(115200);
+    Serial.println("Smart Display for ZOE");
+  #endif
   //Initialize display
   lcd.begin(16, 2);
   lcd.clear();
   lcd.home();
 
-  lcd.setCursor(5, 0); lcd.print(F("SMART"));
-  lcd.setCursor(4, 1); lcd.print(F("Display"));
+  lcd.setCursor(0, 0); lcd.print(F("Smart Display"));
+  lcd.setCursor(0, 1); lcd.print(F("for ZOE"));
   delay(1000);
 
   lcd.clear();
   lcd.home();
 
+  unsigned int retryCount = 0;
+
   //Initialize CAN shield
   while (CAN_OK != CAN.begin(CAN_500KBPS))              // init can bus : baudrate = 500k
     {
+      retryCount = retryCount + 1;
      #ifdef SERIAL_DEBUG
-        Serial.println("CAN init failed, retry");
+        Serial.println("CAN Init Failed! Retrying...");
      #endif
         lcd.clear();
         lcd.home();
-        lcd.setCursor(0, 0); lcd.print(F("CAN init failed,"));
-        lcd.setCursor(6, 1); lcd.print(F("retry"));
-        delay(250);
+        lcd.setCursor(0, 0); lcd.print(F("CAN Init Failed!"));
+        lcd.setCursor(0, 1); lcd.print(F("Retried:"));
+        lcd.setCursor(9, 1); lcd.print(retryCount);
+        delay(1000);
     }
   #ifdef SERIAL_DEBUG
-    Serial.println("CAN init ok");
+    Serial.println("CAN Init OK!");
   #endif
   //Setup CAN PID filters
   //there are 2 mask in mcp2515, you need to set both of them
@@ -264,7 +268,7 @@ void setup()
   
   lcd.clear();
   lcd.home();
-  lcd.setCursor(3, 0); lcd.print(F("CAN init ok"));
+  lcd.setCursor(3, 0); lcd.print(F("CAN Init OK!"));
   lcd.setCursor(2, 1); lcd.print(F("Wait for data"));
   delay(500);
  
