@@ -7,6 +7,8 @@ An onboard realtime status display for Renault ZOE
     * For example: https://www.seeedstudio.com/CAN-BUS-Shield-V1-2-p-2256.html
 * Arduino LCD KeyPad Shield
     * For example: https://www.dfrobot.com/wiki/index.php/Arduino_LCD_KeyPad_Shield_(SKU:_DFR0009)
+* DB9 to OBD2 Cable
+    * For example: https://www.seeedstudio.com/DB9-to-OBD2-Cable-With-Switch-p-2872.html
 * Optional: any prototype shield to lift the LCD shield
 
 ## Software requirements
