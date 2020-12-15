@@ -3,9 +3,11 @@ An onboard realtime status display for Renault ZOE
 
 ## Hardware needed
 * Arduino Uno Rev3
-* CAN-BUS Shield https://www.seeedstudio.com/CAN-BUS-Shield-V1-2-p-2256.html
-* Arduino LCD KeyPad Shield (SKU: DFR0009) https://www.dfrobot.com/wiki/index.php/Arduino_LCD_KeyPad_Shield_(SKU:_DFR0009)
-* any protoshield, to lift the LCD shield (optional)
+* CAN-BUS Shield 
+    * For example: https://www.seeedstudio.com/CAN-BUS-Shield-V1-2-p-2256.html
+* Arduino LCD KeyPad Shield
+    * For example: https://www.dfrobot.com/wiki/index.php/Arduino_LCD_KeyPad_Shield_(SKU:_DFR0009)
+* Optional: any prototype shield to lift the LCD shield
 
 ## Software requirements
 * https://github.com/premultiply/MCP_CAN_lib
