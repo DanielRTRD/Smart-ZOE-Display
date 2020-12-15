@@ -1,6 +1,8 @@
 # Smart ZOE Display
 An onboard realtime status display for Renault ZOE
 
+![Preview](https://github.com/DanielRTRD/Smart-ZOE-Display/blob/master/preview.jpg?raw=true)
+
 ## Hardware needed
 * Arduino Uno Rev3
 * CAN-BUS Shield 
