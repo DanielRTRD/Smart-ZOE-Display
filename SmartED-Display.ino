@@ -437,72 +437,68 @@ void loop()
         if (!freezePID) pid_0xPID = swap_uint64(buf.ui64);
       }
       switch (rxId) {
-      case 0x200: pid_0x200 = swap_uint64(buf.ui64); break;
-      case 0x236: pid_0x236 = swap_uint64(buf.ui64); break;
-      case 0x2D5: pid_0x2D5 = swap_uint64(buf.ui64); break;
-      case 0x318: pid_0x318 = swap_uint64(buf.ui64); break;
-      case 0x3CE: pid_0x3CE = swap_uint64(buf.ui64); break;
-      case 0x3D5: pid_0x3D5 = swap_uint64(buf.ui64); break;
-      case 0x3D7: pid_0x3D7 = swap_uint64(buf.ui64); break;
-      case 0x3F2: pid_0x3F2 = swap_uint64(buf.ui64); break;
-      case 0x408: pid_0x408 = swap_uint64(buf.ui64); break;
-      case 0x412: pid_0x412 = swap_uint64(buf.ui64); break;
-      case 0x418: pid_0x418 = swap_uint64(buf.ui64); break;
-      case 0x423: pid_0x423 = swap_uint64(buf.ui64); break;
-      case 0x443: pid_0x443 = swap_uint64(buf.ui64); break;
-      case 0x448: pid_0x448 = swap_uint64(buf.ui64); break;
-      case 0x504: pid_0x504 = swap_uint64(buf.ui64); break;
-      case 0x508: pid_0x508 = swap_uint64(buf.ui64); break;
-      case 0x512: pid_0x512 = swap_uint64(buf.ui64); break;
-      case 0x518: pid_0x518 = swap_uint64(buf.ui64); break;
-      default: pid_xy = swap_uint64(buf.ui64);  break;
+        case 0x200: pid_0x200 = swap_uint64(buf.ui64); break;
+        case 0x236: pid_0x236 = swap_uint64(buf.ui64); break;
+        case 0x2D5: pid_0x2D5 = swap_uint64(buf.ui64); break;
+        case 0x318: pid_0x318 = swap_uint64(buf.ui64); break;
+        case 0x3CE: pid_0x3CE = swap_uint64(buf.ui64); break;
+        case 0x3D5: pid_0x3D5 = swap_uint64(buf.ui64); break;
+        case 0x3D7: pid_0x3D7 = swap_uint64(buf.ui64); break;
+        case 0x3F2: pid_0x3F2 = swap_uint64(buf.ui64); break;
+        case 0x408: pid_0x408 = swap_uint64(buf.ui64); break;
+        case 0x412: pid_0x412 = swap_uint64(buf.ui64); break;
+        case 0x418: pid_0x418 = swap_uint64(buf.ui64); break;
+        case 0x423: pid_0x423 = swap_uint64(buf.ui64); break;
+        case 0x443: pid_0x443 = swap_uint64(buf.ui64); break;
+        case 0x448: pid_0x448 = swap_uint64(buf.ui64); break;
+        case 0x504: pid_0x504 = swap_uint64(buf.ui64); break;
+        case 0x508: pid_0x508 = swap_uint64(buf.ui64); break;
+        case 0x512: pid_0x512 = swap_uint64(buf.ui64); break;
+        case 0x518: pid_0x518 = swap_uint64(buf.ui64); break;
+        default: pid_xy = swap_uint64(buf.ui64);  break;
       }
     }
   }
   //read buttons
   analogButtons.check();
 
-    if (intCount | screenRefresh) {
-  //display screens
+  if (intCount | screenRefresh) {
+    //display screens
     screenRefresh = false;
     lcd.home();
     switch (pageno) {
-
       case SCRN_ODO: // ODO display range
         CAN.init_Filt(0, 0, 0x412);
         CAN.init_Filt(1, 0, 0x318);
-        lcd.setCursor(2, 0); lcd.print(F("Km:")); lcdEx.printf("%7ukm", (pid_0x412 >> 24 ) & 0xFFFFFFu ); // Kmstand
+        lcd.setCursor(2, 0); lcd.print(F("Km:")); lcdEx.printf("%7ukm", (pid_0x412 >> 24 ) & 0xFFFFFFu ); // Odometer
         lcd.setCursor(0, 1); lcd.print(F("Rw:")); lcdEx.printf("%3ikm  ", (pid_0x318 >> 0 ) & 0xFFu ); // Range
         //lcd.setCursor(9, 1); lcd.print(F("Pwr")); lcdEx.printf("%3i%%", (pid_0x318 >> 16 ) & 0xFFu ); // Power
         lcd.setCursor(10, 1); lcd.print(F("Pwr: "));
         if ( ((pid_0x318 >> 16 ) & 0xFFu ) == 33 ) {lcd.write(CHR_Power33);} // Power
         if ( ((pid_0x318 >> 16 ) & 0xFFu ) == 66 ) {lcd.write(CHR_Power66);} // Power
         if ( ((pid_0x318 >> 16 ) & 0xFFu ) == 99 ) {lcd.write(CHR_Power99);} // Power
-      break;
+        break;
 
       case SCRN_CRG: // Charging display
         CAN.init_Filt(0, 0, 0x448);
         CAN.init_Filt(1, 0, 0x508);
-        if ( ((pid_0x448 >> 56) & 0xFFu) == 0x0F )
-        {
-        lcd.setCursor(0, 0); lcd.print(F("Power   ")); lcdEx.printf("%7.1f", ( (((pid_0x448 >> 0) & 0xFFFFu) / 10.0 ) * ((((pid_0x508 >> 32) & 0x3FFFu) / 10 ) - 819.2 ) ) * 0.001 ); lcd.write(CHR_KW); // Leistung
-        lcd.setCursor(1, 1); lcdEx.printf("%5.1fV", ((pid_0x448 >> 0) & 0xFFFFu) / 10.0 ); // hvV
-        lcd.setCursor(8, 1); lcdEx.printf("%6.1fA", (((pid_0x508 >> 32) & 0x3FFFu) / 10 ) - 819.2 ); // hvA
+        if (((pid_0x448 >> 56) & 0xFFu) == 0x0F) {
+          lcd.setCursor(0, 0); lcd.print(F("Power   ")); lcdEx.printf("%7.1f", ( (((pid_0x448 >> 0) & 0xFFFFu) / 10.0 ) * ((((pid_0x508 >> 32) & 0x3FFFu) / 10 ) - 819.2 ) ) * 0.001 ); lcd.write(CHR_KW); // Leistung
+          lcd.setCursor(1, 1); lcdEx.printf("%5.1fV", ((pid_0x448 >> 0) & 0xFFFFu) / 10.0 ); // hvV
+          lcd.setCursor(8, 1); lcdEx.printf("%6.1fA", (((pid_0x508 >> 32) & 0x3FFFu) / 10 ) - 819.2 ); // hvA
+        } else {
+          lcd.setCursor(0, 0); lcd.print(F("Power  ")); lcdEx.printf("    __._"); lcd.write(CHR_KW); // Leistung
+          lcd.setCursor(1, 1); lcdEx.printf("___._V"); // hvV
+          lcd.setCursor(8, 1); lcdEx.printf("%6.1fA", (((pid_0x508 >> 32) & 0x3FFFu) / 10 ) - 819.2 ); // hvA
         }
-        else
-        {
-        lcd.setCursor(0, 0); lcd.print(F("Power  ")); lcdEx.printf("    __._"); lcd.write(CHR_KW); // Leistung
-        lcd.setCursor(1, 1); lcdEx.printf("___._V"); // hvV
-        lcd.setCursor(8, 1); lcdEx.printf("%6.1fA", (((pid_0x508 >> 32) & 0x3FFFu) / 10 ) - 819.2 ); // hvA
-        }
-      break;
+        break;
 
       case SCRN_SOC: // SOC display
         CAN.init_Filt(0, 0, 0x518);
         CAN.init_Filt(1, 0, 0x2D5);
         lcd.setCursor(2, 0); lcd.print(F(" SOC ")); lcdEx.printf("%5.1f%%", ((pid_0x518 ) & 0xFFu)  /  2.0 ); // SOC
         lcd.setCursor(2, 1); lcd.print(F("rSOC ")); lcdEx.printf("%5.1f%%", ((pid_0x2D5 >> 16) & 0xFFFu) / 10.0 ); // rSOC
-      break;
+        break;
 
       case SCRN_ECO: // ECO display
         CAN.init_Filt(0, 0, 0x3F2);
@@ -511,7 +507,7 @@ void loop()
         lcd.setCursor(9, 0); lcd.print(F("bre")); lcdEx.printf("%3i%%", ((pid_0x3F2 >> 40 ) & 0xFFu ) / 2); // ECO
         lcd.setCursor(0, 1); lcd.print(F("drv")); lcdEx.printf("%3i%%", ((pid_0x3F2 >> 48 ) & 0xFFu ) / 2); // ECO
         lcd.setCursor(9, 1); lcd.print(F("acc")); lcdEx.printf("%3i%%", ((pid_0x3F2 >> 56 ) & 0xFFu ) / 2); // ECO
-      break;
+        break;
 
       case SCRN_200: // PID 0x200
         CAN.init_Filt(0, 0, 0x200);
@@ -812,7 +808,6 @@ void loop()
   
   lastCycle = millis() - startCycle;
 }
-
 
 uint64_t swap_uint64(uint64_t val)
 {
