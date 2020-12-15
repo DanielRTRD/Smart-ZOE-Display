@@ -1,6 +1,13 @@
 /*********************************************************************************************************
-  Smart owners assistant display
-  based on https://github.com/premultiply/ZOEdisplay/
+
+Smart-ZOE-Display
+
+Github:
+https://github.com/DanielRTRD/Smart-ZOE-Display
+
+Contributors:
+https://github.com/DanielRTRD/Smart-ZOE-Display/graphs/contributors
+
 *********************************************************************************************************/
 
 #include <SPI.h>
