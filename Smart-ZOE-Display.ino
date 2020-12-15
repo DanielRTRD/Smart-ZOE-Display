@@ -61,14 +61,12 @@ enum timer_mode : byte {
   TM_DRIVING    // speed > 0
 };
 
-
 union union64 {
   unsigned char uc[8];   // 8 bit (1 byte) 0 bis 255 / 0 bis (2^8)-1)
   byte           b[8];   // 8 bit (1 byte) 0 bis 255 / 0 bis (2^8)-1)
   uint8_t      ui8[8];   // 8 bit (1 byte) 0 bis 255 / 0 bis (2^8)-1)
   uint64_t       ui64;   // 64 bit (4 byte) 0 to 4,294,967,295 / 0 bis (2^64) - 1)
 };
-
 
 const uint64_t PID_INIT_VALUE = 0;
 const byte DAY_BRIGHTNESS = UINT8_MAX;
@@ -240,20 +238,21 @@ void setup()
 
   unsigned int retryCount = 0;
 
-  //Initialize CAN shield
-  while (CAN_OK != CAN.begin(CAN_500KBPS))              // init can bus : baudrate = 500k
-    {
-      retryCount = retryCount + 1;
-     #ifdef SERIAL_DEBUG
-        Serial.println("CAN Init Failed! Retrying...");
-     #endif
-        lcd.clear();
-        lcd.home();
-        lcd.setCursor(0, 0); lcd.print(F("CAN Init Failed!"));
-        lcd.setCursor(0, 1); lcd.print(F("Retried:"));
-        lcd.setCursor(9, 1); lcd.print(retryCount);
-        delay(1000);
-    }
+  // Initialize CAN shield
+  // init can bus : baudrate = 500k
+  while (CAN_OK != CAN.begin(CAN_500KBPS))
+  {
+    retryCount = retryCount + 1;
+    #ifdef SERIAL_DEBUG
+      Serial.println("CAN Init Failed! Retrying...");
+    #endif
+    lcd.clear();
+    lcd.home();
+    lcd.setCursor(0, 0); lcd.print(F("CAN Init Failed!"));
+    lcd.setCursor(0, 1); lcd.print(F("Retried:"));
+    lcd.setCursor(9, 1); lcd.print(retryCount);
+    delay(1000);
+  }
   #ifdef SERIAL_DEBUG
     Serial.println("CAN Init OK!");
   #endif
@@ -279,7 +278,6 @@ void setup()
   lcd.setCursor(2, 1); lcd.print(F("Wait for data"));
   delay(500);
  
-  
   //pinMode(CAN_INT, INPUT); // Inputmode is default
 
   //Button assignments
@@ -313,7 +311,8 @@ void setup()
   EEPROM.get(0x70, selectedPID);
   EEPROM.get(0x80, timerMode);
 
-  if (isnan(priceKwh) || isnan(energy) || isnan(ChargeBeginKwh) || isnan(ChargeEndKwh)) {
+  if (isnan(priceKwh) || isnan(energy) || isnan(ChargeBeginKwh) || isnan(ChargeEndKwh))
+  {
     priceKwh = 0.0;
     energy = 0;
     ChargeBeginKwh = 0.0;
@@ -431,19 +430,23 @@ void loop()
   startCycle = millis();
 
   //CAN receiver
-  if(!digitalRead(CAN_INT)) { 
-    if(CAN_MSGAVAIL == CAN.checkReceive()) {
+  if(!digitalRead(CAN_INT))
+  { 
+    if(CAN_MSGAVAIL == CAN.checkReceive())
+    {
       byte len = 0;
       buf.ui64 = PID_INIT_VALUE;
       CAN.readMsgBuf(&len, buf.b);
       rxId = CAN.getCanId();
       //user pid decoder
-      if (rxId == selectedPID) {
+      if (rxId == selectedPID)
+      {
         lastPidCycleDuration = millis() - lastPidSeen;
         lastPidSeen = millis();
         if (!freezePID) pid_0xPID = swap_uint64(buf.ui64);
       }
-      switch (rxId) {
+      switch (rxId)
+      {
         case 0x200: pid_0x200 = swap_uint64(buf.ui64); break;
         case 0x236: pid_0x236 = swap_uint64(buf.ui64); break;
         case 0x2D5: pid_0x2D5 = swap_uint64(buf.ui64); break;
@@ -469,11 +472,13 @@ void loop()
   //read buttons
   analogButtons.check();
 
-  if (intCount | screenRefresh) {
+  if (intCount | screenRefresh)
+  {
     //display screens
     screenRefresh = false;
     lcd.home();
-    switch (pageno) {
+    switch (pageno)
+    {
       case SCRN_ODO: // ODO display range
         CAN.init_Filt(0, 0, 0x412);
         CAN.init_Filt(1, 0, 0x318);
@@ -489,7 +494,8 @@ void loop()
       case SCRN_CRG: // Charging display
         CAN.init_Filt(0, 0, 0x448);
         CAN.init_Filt(1, 0, 0x508);
-        if (((pid_0x448 >> 56) & 0xFFu) == 0x0F) {
+        if (((pid_0x448 >> 56) & 0xFFu) == 0x0F)
+        {
           lcd.setCursor(0, 0); lcd.print(F("Power   ")); lcdEx.printf("%7.1f", ( (((pid_0x448 >> 0) & 0xFFFFu) / 10.0 ) * ((((pid_0x508 >> 32) & 0x3FFFu) / 10 ) - 819.2 ) ) * 0.001 ); lcd.write(CHR_KW); // Leistung
           lcd.setCursor(1, 1); lcdEx.printf("%5.1fV", ((pid_0x448 >> 0) & 0xFFFFu) / 10.0 ); // hvV
           lcd.setCursor(8, 1); lcdEx.printf("%6.1fA", (((pid_0x508 >> 32) & 0x3FFFu) / 10 ) - 819.2 ); // hvA
@@ -802,9 +808,9 @@ void loop()
         CAN.init_Filt(0, 0, 0x7FF);
         CAN.init_Filt(1, 0, 0x7FF);
         lcd.setCursor(3, 0);
-        lcd.print(F("premultiply & eokgnah &"));
+        lcd.print(F("Smart-ZOE-Display"));
         lcd.setCursor(0, 1);
-        lcd.print(F("kirk-loeten & DanielRTRD"));
+        lcd.print(F(""));
         break;
     }
     //perfmon cycle reset
