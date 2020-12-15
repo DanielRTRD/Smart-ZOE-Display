@@ -7,6 +7,14 @@ An onboard realtime status display for Renault ZOE
 * Arduino LCD KeyPad Shield (SKU: DFR0009) https://www.dfrobot.com/wiki/index.php/Arduino_LCD_KeyPad_Shield_(SKU:_DFR0009)
 * any protoshield, to lift the LCD shield (optional)
 
+## Software requirements
+* https://github.com/premultiply/MCP_CAN_lib
+* https://github.com/premultiply/LcdBarGraph 
+* https://github.com/rlogiacco/AnalogButtons
+* https://github.com/Chris--A/PrintEx
+* https://github.com/RobTillaart/Arduino/tree/master/libraries/StopWatch
+* http://playground.arduino.cc/Code/Timer1
+
 ## Information
 For operation, it is necessary that the pin 10 of the display in the direction of CAN-Shield (and Arduino) is simply pinched off or bent so that it does not contact down.
 
